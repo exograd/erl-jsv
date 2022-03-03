@@ -1,6 +1,8 @@
 % erl-jsv changelog
 
-# Next Version
+# Next version
+
+# 1.3.1
 ## Bugs
 - Propagate the verifier state to allow verification state sharing between the
   definitions of a catalog. This allows mutually recursive definitions.

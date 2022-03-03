@@ -14,22 +14,24 @@
 
 -module(jsv_verifier).
 
--export([init/2, verify/1]).
+-export([init/1, verify/2]).
 
 -export_type([state/0]).
 
 -type state() :: #{options := jsv:options(),
-                   definition := jsv:definition(),
                    catalog => jsv:catalog_name(),
-                   verified_definitions :=
-                     #{{jsv:catalog_name(), jsv:definition_name()} :=
-                         boolean()}}.
+                   definitions := definition_set()}.
 
--spec init(jsv:definition(), jsv:options()) -> state().
-init(Definition, Options) ->
+-type definition_set() ::
+        #{definition_key() := boolean()}.
+
+-type definition_key() ::
+        {jsv:catalog_name(), jsv:definition_name()}.
+
+-spec init(jsv:options()) -> state().
+init(Options) ->
   State = #{options => Options,
-            definition => Definition,
-            verified_definitions => #{}},
+            definitions => #{}},
   case maps:find(catalog, Options) of
     {ok, Catalog} ->
       State#{catalog => Catalog};
@@ -37,91 +39,89 @@ init(Definition, Options) ->
       State
   end.
 
--spec verify(state()) -> ok | {error, [jsv:definition_error_reason()]}.
-verify(#{definition := {one_of, []}}) ->
+-spec verify(jsv:definition(), state()) ->
+        {ok, state()} | {error, [jsv:definition_error_reason()]}.
+verify({one_of, []}, _State) ->
   {error, [invalid_empty_definition_list]};
-verify(State = #{definition := {one_of, Definitions}}) when
-    is_list(Definitions) ->
+verify({one_of, Definitions}, State) when is_list(Definitions) ->
   case
-    lists:foldl(fun (Def, Acc) ->
-                    case verify(State#{definition := Def}) of
-                      ok -> Acc;
-                      {error, Errors} -> Acc ++ Errors
+    lists:foldl(fun (Def, {Es, S}) ->
+                    case verify(Def, S) of
+                      {ok, S2} -> {Es, S2};
+                      {error, Es2} -> {Es ++ Es2, S}
                     end
-                end, [], Definitions)
+                end, {[], State}, Definitions)
   of
-    [] ->
-      ok;
-    Errors ->
+    {[], State2} ->
+      {ok, State2};
+    {Errors, _} ->
       {error, Errors}
   end;
-verify(State = #{definition := {ref, DefinitionName}}) ->
+verify({ref, DefinitionName}, State) ->
   case maps:find(catalog, State) of
     {ok, Catalog} ->
-      verify(State#{definition := {ref, Catalog, DefinitionName}});
+      verify({ref, Catalog, DefinitionName}, State);
     error ->
       {error, [no_current_catalog]}
   end;
-verify(State = #{definition := {ref, Catalog, DefinitionName},
-                 verified_definitions := VerifiedDefinitions}) ->
+verify({ref, Catalog, DefinitionName},
+       State = #{definitions := Definitions}) ->
   Key = {Catalog, DefinitionName},
-  case maps:is_key(Key, VerifiedDefinitions) of
+  case maps:is_key(Key, Definitions) of
     true ->
-      ok;
+      {ok, State};
     false ->
       case jsv:find_catalog_definition(Catalog, DefinitionName) of
         {ok, Definition} ->
-          verify(State#{definition => Definition,
-                        catalog => Catalog,
-                        verified_definitions =>
-                          VerifiedDefinitions#{Key => true}});
+          verify(Definition, State#{catalog => Catalog,
+                                    definitions => Definitions#{Key => true}});
         {error, Reason} ->
           {error, [Reason]}
       end
   end;
-verify(State = #{definition := TypeName}) when
-    is_atom(TypeName) ->
-  verify(State#{definition => {TypeName, #{}, #{}}});
-verify(State = #{definition := {TypeName, Constraints}}) ->
-  verify(State#{definition => {TypeName, Constraints, #{}}});
-verify(State = #{options := Options,
-                 definition := {TypeName, Constraints, Extra}}) when
+verify(TypeName, State) when is_atom(TypeName) ->
+  verify({TypeName, #{}, #{}}, State);
+verify({TypeName, Constraints}, State) ->
+  verify({TypeName, Constraints, #{}}, State);
+verify({TypeName, Constraints, Extra}, State = #{options := Options}) when
     is_atom(TypeName), is_map(Constraints), is_map(Extra) ->
   case maps:find(TypeName, jsv:type_map(Options)) of
     {ok, Module} ->
-      F = fun (ConstraintName, ConstraintValue, Errors) ->
+      F = fun (ConstraintName, ConstraintValue, {Es, S}) ->
               Constraint = {ConstraintName, ConstraintValue},
               Result = case
                          jsv_utils:call_if_defined(Module, verify_constraint,
-                                                   [Constraint, State])
+                                                   [Constraint, S])
                        of
                          {ok, Res} -> Res;
                          undefined -> unknown
                        end,
               case Result of
                 ok ->
-                  Errors;
+                  {Es, S};
+                {ok, S2} ->
+                  {Es, S2};
                 unknown ->
-                  [{unknown_constraint, TypeName, Constraint} | Errors];
+                  {[{unknown_constraint, TypeName, Constraint} | Es], S};
                 invalid ->
                   Error = {invalid_constraint, TypeName, Constraint,
                            invalid_value},
-                  [Error | Errors];
+                  {[Error | Es], S};
                 {invalid, Reason} ->
                   Error = {invalid_constraint, TypeName, Constraint, Reason},
-                  [Error | Errors];
+                  {[Error | Es], S};
                 {error, ValidationErrors} ->
-                  ValidationErrors ++ Errors
+                  {ValidationErrors ++ Es, S}
               end
           end,
-      case maps:fold(F, [], Constraints) of
-        [] ->
-          ok;
-        Errors ->
+      case maps:fold(F, {[], State}, Constraints) of
+        {[], State2} ->
+          {ok, State2};
+        {Errors, _} ->
           {error, Errors}
       end;
     error ->
       {error, [{unknown_type, TypeName}]}
   end;
-verify(#{definition := Definition}) ->
+verify(Definition, _State) ->
   {error, [{invalid_format, Definition}]}.

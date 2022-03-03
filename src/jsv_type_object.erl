@@ -29,7 +29,7 @@
                     | {members, #{atom() := jsv:definition()}}.
 
 verify_constraint({value, Definition}, State) ->
-  jsv_verifier:verify(State#{definition := Definition});
+  jsv_verifier:verify(Definition, State);
 
 verify_constraint({min_size, Min}, _) when is_integer(Min), Min >= 0 ->
   ok;
@@ -54,18 +54,18 @@ verify_constraint({required, _}, _) ->
 verify_constraint({members, Definitions}, State) when is_map(Definitions) ->
   case lists:all(fun is_atom/1, maps:keys(Definitions)) of
     true ->
-      F = fun (_, Definition, Errors) ->
-              case jsv_verifier:verify(State#{definition := Definition}) of
-                ok ->
-                  Errors;
-                {error, Errors2} ->
-                  Errors2 ++ Errors
+      F = fun (_, Definition, {Es, S}) ->
+              case jsv_verifier:verify(Definition, S) of
+                {ok, S2} ->
+                  {Es, S2};
+                {error, Es2} ->
+                  {Es2 ++ Es, S}
               end
           end,
-      case maps:fold(F, [], Definitions) of
-        [] ->
-          ok;
-        Errors ->
+      case maps:fold(F, {[], State}, Definitions) of
+        {[], State2} ->
+          {ok, State2};
+        {Errors, _} ->
           {error, Errors}
       end;
     false ->

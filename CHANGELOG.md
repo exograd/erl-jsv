@@ -2,6 +2,8 @@
 
 # Next Version
 ## Bugs
+- Propagate the verifier state to allow verification state sharing between the
+  definitions of a catalog. This allows mutually recursive definitions.
 - Fix the formatting of the error message produced by violation of string
   value constraints.
 

@@ -21,6 +21,7 @@
 -callback verify_constraint(jsv:constraint(), jsv_verifier:state()) ->
   Result when
     Result :: ok
+            | {ok, jsv_verifier:state()}
             | unknown
             | invalid
             | {invalid, term()}

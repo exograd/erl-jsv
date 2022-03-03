@@ -601,7 +601,9 @@ validate_catalogs_test_() ->
        Catalog = #{a => integer,
                    b => {ref, c},
                    c => integer,
-                   d => {ref, z}},
+                   d => {ref, z},
+                   e => {array, #{element => {one_of, [null, {ref, f}]}}},
+                   f => {object, #{value => {one_of, [null, {ref, e}]}}}},
        jsv_catalog_registry:start_link(),
        jsv:register_catalog(test, Catalog)
    end,
@@ -620,7 +622,10 @@ validate_catalogs_test_() ->
     ?_assertError({invalid_definition, [{unknown_definition, test, z}]},
                   jsv:validate(42, {ref, test, d})),
     ?_assertMatch({ok, _},
-                  jsv:validate(42, {ref, test, b}))]}.
+                  jsv:validate(42, {ref, test, b})),
+    ?_assertMatch({ok, _},
+                  jsv:validate([null, #{a => [], b => null}],
+                               {ref, test, e}))]}.
 
 extra_validate_test_() ->
   ValidateOddInteger =

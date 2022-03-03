@@ -27,7 +27,7 @@
                     | {unique_elements, boolean()}.
 
 verify_constraint({element, Definition}, State) ->
-  jsv_verifier:verify(State#{definition := Definition});
+  jsv_verifier:verify(Definition, State);
 verify_constraint({min_length, Min}, _) when is_integer(Min), Min >= 0 ->
   ok;
 verify_constraint({min_length, _}, _) ->

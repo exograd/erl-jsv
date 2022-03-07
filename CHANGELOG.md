@@ -4,6 +4,8 @@
 ## Misc
 - Always generate reason strings for value errors. Therefore the
   `format_value_errors` option has been removed.
+- The `jsv:format_value_error/1` and `jsv:format_value_errors/1` functions now
+  return string data containing human readable messages.
 
 # 1.3.1
 ## Bugs

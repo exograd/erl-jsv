@@ -21,7 +21,8 @@
          verify_definition/1, verify_definition/2,
          type_map/1,
          catalog_table_name/1, register_catalog/2, unregister_catalog/1,
-         find_catalog_definition/2]).
+         find_catalog_definition/2,
+         format_value_error/1, format_value_errors/1]).
 
 -export_type([definition/0, definition_name/0,
               catalog/0, catalog_name/0, catalog_table_name/0,
@@ -84,7 +85,7 @@
 -type generation_result() :: {ok, term()} | {error, term()}.
 
 -type options() :: #{type_map => type_map(),
-                     disable_verification => boolean(),
+                     disanble_verification => boolean(),
                      catalog => catalog_name(),
                      unknown_member_handling => unknown_member_handling(),
                      null_member_handling => null_member_handling(),
@@ -155,7 +156,7 @@ validate(Value, Definition, Options) ->
     {ok, CanonicalValue} ->
       {ok, CanonicalValue};
     {error, Errors} ->
-      Errors2 = generate_value_error_reason_string(Errors, Options),
+      Errors2 = generate_value_error_strings(Errors, Options),
       {error, Errors2}
   end.
 
@@ -239,15 +240,12 @@ verify_definition(Definition, Options) ->
       {error, Errors}
   end.
 
--spec generate_value_error_reason_string([value_error()], options())
-                                        -> [value_error()];
-                                        (value_error(), options())
-                                        -> value_error().
-generate_value_error_reason_string(Errors, Options) when is_list(Errors) ->
-  [generate_value_error_reason_string(E, Options) || E <- Errors];
-generate_value_error_reason_string(Error = #{reason := Reason,
-                                             pointer := Pointer},
-                                   Options) ->
+-spec generate_value_error_strings([value_error()], options()) -> [value_error()];
+                                  (value_error(), options()) -> value_error().
+generate_value_error_strings(Errors, Options) when is_list(Errors) ->
+  [generate_value_error_strings(E, Options) || E <- Errors];
+generate_value_error_strings(Error = #{reason := Reason, pointer := Pointer},
+                             Options) ->
   TypeMap = type_map(Options),
   Msg = case Reason of
           invalid_type ->
@@ -326,4 +324,24 @@ find_catalog_definition(CatalogName, DefinitionName) ->
         [] ->
           {error, {unknown_definition, CatalogName, DefinitionName}}
       end
+  end.
+
+-spec format_value_error(value_error()) -> unicode:chardata().
+format_value_error(#{pointer_string := <<"">>,
+                     reason_string := ReasonString}) ->
+  ReasonString;
+format_value_error(#{pointer_string := PointerString,
+                     reason_string := ReasonString}) ->
+  <<PointerString/binary, ": ", ReasonString/binary>>;
+format_value_error(Error) ->
+  format_value_error(generate_value_error_strings(Error, #{})).
+
+-spec format_value_errors([value_error()]) -> unicode:chardata().
+format_value_errors(Errors) ->
+  Data = lists:join($\n, [format_value_error(E) || E <- Errors]),
+  case unicode:characters_to_binary(Data) of
+    Bin when is_binary(Bin) ->
+      Bin;
+    _ ->
+      error({invalid_character_data, Data})
   end.

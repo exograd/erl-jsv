@@ -93,5 +93,15 @@ do_register_catalog(Name, Catalog, State = #{tables := Tables}) ->
 -spec do_unregister_catalog(jsv:catalog_name(), state()) -> state().
 do_unregister_catalog(Name, State = #{tables := Tables}) ->
   TableName = table_name(Name),
-  ets:delete(TableName),
+  try
+    ets:delete(TableName)
+  catch
+    error:badarg ->
+      %% There is no point in crashing when the ETS table does not exist.
+      %% Usually it happens when trying to clean up during tests after a
+      %% partial initialization failure: some catalogs have not been
+      %% registered, but the jsv:unregister_catalog/1 is still being called.
+      ?LOG_ERROR("ets table '~tp' not found during unregistration"),
+      ok
+  end,
   State#{tables => maps:remove(Name, Tables)}.

@@ -1,6 +1,9 @@
 % erl-jsv changelog
 
 # Next version
+## Misc
+- Always generate reason strings for value errors. Therefore the
+  `format_value_errors` option has been removed.
 
 # 1.3.1
 ## Bugs

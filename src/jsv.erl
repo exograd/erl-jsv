@@ -19,8 +19,6 @@
          generate/2, generate/3,
          verify_catalog/1, verify_catalog/2,
          verify_definition/1, verify_definition/2,
-         format_value_error/1, format_value_error/2,
-         format_value_errors/1, format_value_errors/2,
          type_map/1,
          catalog_table_name/1, register_catalog/2, unregister_catalog/1,
          find_catalog_definition/2]).
@@ -77,7 +75,7 @@
          Reason :: term(), ReasonString :: unicode:chardata()}
       | {invalid_value, term(), json_pointer:pointer(),
          Reason :: term(), ReasonString :: unicode:chardata()}
-      | {invalid_child, json_pointer:pointer(), [jsv:value_error()]}.
+      | {invalid_child, json_pointer:pointer(), [value_error()]}.
 
 -type generate_fun() ::
         fun((term()) -> generation_result())
@@ -86,7 +84,6 @@
 -type generation_result() :: {ok, term()} | {error, term()}.
 
 -type options() :: #{type_map => type_map(),
-                     format_value_errors => boolean(),
                      disable_verification => boolean(),
                      catalog => catalog_name(),
                      unknown_member_handling => unknown_member_handling(),
@@ -158,12 +155,7 @@ validate(Value, Definition, Options) ->
     {ok, CanonicalValue} ->
       {ok, CanonicalValue};
     {error, Errors} ->
-      Errors2 = case maps:get(format_value_errors, Options, false) of
-                  true ->
-                    format_value_errors(Errors, Options);
-                  false ->
-                    Errors
-                end,
+      Errors2 = generate_value_error_reason_string(Errors, Options),
       {error, Errors2}
   end.
 
@@ -247,14 +239,15 @@ verify_definition(Definition, Options) ->
       {error, Errors}
   end.
 
--spec format_value_error(value_error()) ->
-        value_error().
-format_value_error(Error) ->
-  format_value_error(Error, #{}).
-
--spec format_value_error(value_error(), options()) -> value_error().
-format_value_error(Error = #{reason := Reason, pointer := Pointer},
-                   Options) ->
+-spec generate_value_error_reason_string([value_error()], options())
+                                        -> [value_error()];
+                                        (value_error(), options())
+                                        -> value_error().
+generate_value_error_reason_string(Errors, Options) when is_list(Errors) ->
+  [generate_value_error_reason_string(E, Options) || E <- Errors];
+generate_value_error_reason_string(Error = #{reason := Reason,
+                                             pointer := Pointer},
+                                   Options) ->
   TypeMap = type_map(Options),
   Msg = case Reason of
           invalid_type ->
@@ -284,16 +277,6 @@ format_value_error(Error = #{reason := Reason, pointer := Pointer},
         end,
   Error#{reason_string => iolist_to_binary(Msg),
          pointer_string => json_pointer:serialize(Pointer)}.
-
--spec format_value_errors([value_error()]) ->
-        [value_error()].
-format_value_errors(Errors) ->
-  format_value_errors(Errors, #{}).
-
--spec format_value_errors([value_error()], type_map()) ->
-        [value_error()].
-format_value_errors(Errors, Options) ->
-  lists:map(fun (Error) -> format_value_error(Error, Options) end, Errors).
 
 -spec default_type_map() -> type_map().
 default_type_map() ->

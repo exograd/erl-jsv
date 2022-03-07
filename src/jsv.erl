@@ -85,7 +85,7 @@
 -type generation_result() :: {ok, term()} | {error, term()}.
 
 -type options() :: #{type_map => type_map(),
-                     disanble_verification => boolean(),
+                     disable_verification => boolean(),
                      catalog => catalog_name(),
                      unknown_member_handling => unknown_member_handling(),
                      null_member_handling => null_member_handling(),

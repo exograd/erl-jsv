@@ -6,6 +6,10 @@
   `format_value_errors` option has been removed.
 - The `jsv:format_value_error/1` and `jsv:format_value_errors/1` functions now
   return string data containing human readable messages.
+- Do not crash the catalog registry when an ETS table does not exist during
+  deletion.
+- Signal a clear error when an ETS table already exists during catalog
+  registration.
 
 # 1.3.1
 ## Bugs

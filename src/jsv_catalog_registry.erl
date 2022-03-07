@@ -41,7 +41,12 @@ stop() ->
 -spec register_catalog(jsv:catalog_name(), jsv:catalog()) ->
         jsv:catalog_table_name().
 register_catalog(Name, Catalog) ->
-  gen_server:call(?MODULE, {register_catalog, Name, Catalog}).
+  case gen_server:call(?MODULE, {register_catalog, Name, Catalog}) of
+    {ok, TableName} ->
+      TableName;
+    {error, Reason} ->
+      error(Reason)
+  end.
 
 -spec unregister_catalog(jsv:catalog_name()) -> ok.
 unregister_catalog(Name) ->
@@ -59,13 +64,15 @@ terminate(_Reason, #{tables := Tables}) ->
   ok.
 
 handle_call({register_catalog, Name, Catalog}, _From, State) ->
-  {TableName, State2} = do_register_catalog(Name, Catalog, State),
-  {reply, TableName, State2};
-
+  case do_register_catalog(Name, Catalog, State) of
+    {ok, TableName, State2} ->
+      {reply, {ok, TableName}, State2};
+    {error, Reason} ->
+      {reply, {error, Reason}, State}
+  end;
 handle_call({unregister_catalog, Name}, _From, State) ->
   State2 = do_unregister_catalog(Name, State),
   {reply, ok, State2};
-
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
@@ -79,16 +86,21 @@ handle_info(Msg, State) ->
   {noreply, State}.
 
 -spec do_register_catalog(jsv:catalog_name(), jsv:catalog(), state()) ->
-        {jsv:catalog_table_name(), state()}.
+        {ok, jsv:catalog_table_name(), state()} | {error, term()}.
 do_register_catalog(Name, Catalog, State = #{tables := Tables}) ->
   TableName = table_name(Name),
-  Id = ets:new(TableName, [set,
-                           named_table,
-                           {read_concurrency, true}]),
-  lists:foreach(fun (Pair) ->
-                    ets:insert(TableName, Pair)
-                end, maps:to_list(Catalog)),
-  {Name, State#{tables => Tables#{Name => Id}}}.
+  try
+    Id = ets:new(TableName, [set, named_table, {read_concurrency, true}]),
+    lists:foreach(fun (Pair) ->
+                      ets:insert(TableName, Pair)
+                  end, maps:to_list(Catalog)),
+    {ok, Name, State#{tables => Tables#{Name => Id}}}
+  catch
+    %% Hopefully only ets:new can signal badarg here... Infortunately there is
+    %% no way to know.
+    error:badarg ->
+      {error, {ets_table_exists, TableName}}
+  end.
 
 -spec do_unregister_catalog(jsv:catalog_name(), state()) -> state().
 do_unregister_catalog(Name, State = #{tables := Tables}) ->

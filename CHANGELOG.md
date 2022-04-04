@@ -1,6 +1,9 @@
 % erl-jsv changelog
 
 # Next version
+## Bugs
+- Fix the error message for the `invalid_names` object constraint violations
+  when there is a single invalid member.
 ## Misc
 - Always generate reason strings for value errors. Therefore the
   `format_value_errors` option has been removed.
@@ -10,6 +13,7 @@
   deletion.
 - Signal a clear error when an ETS table already exists during catalog
   registration.
+- Clearly indicate invalid values in value error messages.
 
 # 1.3.1
 ## Bugs

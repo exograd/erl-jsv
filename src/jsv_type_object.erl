@@ -90,6 +90,8 @@ format_constraint_violation({required, _}, {missing_names, [Name]}) ->
 format_constraint_violation({required, _}, {missing_names, Names}) ->
   Data = lists:join(<<", ">>, lists:map(fun atom_to_binary/1, Names)),
   {"must contain the following members: ~ts", [iolist_to_binary(Data)]};
+format_constraint_violation({members, _}, {invalid_names, [Name]}) ->
+  {"must not contain the following member: ~ts", [Name]};
 format_constraint_violation({members, _}, {invalid_names, Names}) ->
   Data = lists:join(<<", ">>, Names),
   {"must not contain the following members: ~ts",

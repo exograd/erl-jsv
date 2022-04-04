@@ -29,7 +29,7 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({value, ExpectedValue}, _) ->
-  {"value must be equal to ~0tp", [ExpectedValue]}.
+  {"must be equal to ~0tp", [ExpectedValue]}.
 
 validate_type(_, _) ->
   ok.

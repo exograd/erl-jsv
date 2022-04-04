@@ -22,7 +22,8 @@
          type_map/1,
          catalog_table_name/1, register_catalog/2, unregister_catalog/1,
          find_catalog_definition/2,
-         format_value_error/1, format_value_errors/1]).
+         format_value_error/1, format_value_errors/1,
+         format_value/1]).
 
 -export_type([definition/0, definition_name/0,
               catalog/0, catalog_name/0, catalog_table_name/0,
@@ -244,37 +245,47 @@ verify_definition(Definition, Options) ->
                                   (value_error(), options()) -> value_error().
 generate_value_error_strings(Errors, Options) when is_list(Errors) ->
   [generate_value_error_strings(E, Options) || E <- Errors];
-generate_value_error_strings(Error = #{reason := Reason, pointer := Pointer},
+generate_value_error_strings(Error = #{value := Value,
+                                       reason := Reason,
+                                       pointer := Pointer},
                              Options) ->
-  TypeMap = type_map(Options),
-  Msg = case Reason of
-          invalid_type ->
-            <<"value does not match any expected type">>;
-          {invalid_type, ExpectedType} ->
-            io_lib:format(<<"value is not of type ~0tp">>, [ExpectedType]);
-          {invalid_value, _Reason, ReasonString} ->
-            io_lib:format(<<"invalid value: ~ts">>, [ReasonString]);
-          {constraint_violation, Type, Constraint} ->
-            Module = maps:get(Type, TypeMap),
-            case Module:format_constraint_violation(Constraint, undefined) of
-              {Format, Args} ->
-                iolist_to_binary(io_lib:format(Format, Args));
-              Data ->
-                unicode:characters_to_binary(Data)
-            end;
-          {constraint_violation, Type, Constraint, Details} ->
-            Module = maps:get(Type, TypeMap),
-            case Module:format_constraint_violation(Constraint, Details) of
-              {Format, Args} ->
-                iolist_to_binary(io_lib:format(Format, Args));
-              Data ->
-                unicode:characters_to_binary(Data)
-            end;
-          _ ->
-            io_lib:format(<<"invalid value: ~0tp">>, [Reason])
-        end,
+  Msg = value_error_string(Value, Reason, Options),
   Error#{reason_string => iolist_to_binary(Msg),
          pointer_string => json_pointer:serialize(Pointer)}.
+
+-spec value_error_string(term(), value_error_reason(), options()) ->
+        unicode:chardata().
+value_error_string(Value, invalid_type, _) ->
+  io_lib:format(<<"~ts does not match any expected type">>,
+                [format_value(Value)]);
+value_error_string(Value, {invalid_type, ExpectedType}, _) ->
+  io_lib:format(<<"~ts is not of type ~0tp">>,
+                [format_value(Value), ExpectedType]);
+value_error_string(Value, {invalid_value, _Reason, ReasonString}, _) ->
+  io_lib:format(<<"invalid ~ts: ~ts">>,
+                [format_value(Value), ReasonString]);
+value_error_string(Value, {constraint_violation, Type, Constraint},
+                   Options) ->
+  TypeMap = type_map(Options),
+  Module = maps:get(Type, TypeMap),
+  case Module:format_constraint_violation(Constraint, undefined) of
+    {Format, Args} ->
+      [format_value(Value), $\s, io_lib:format(Format, Args)];
+    Data ->
+      [format_value(Value), $\s, Data]
+  end;
+value_error_string(Value, {constraint_violation, Type, Constraint, Details},
+                   Options) ->
+  TypeMap = type_map(Options),
+  Module = maps:get(Type, TypeMap),
+  case Module:format_constraint_violation(Constraint, Details) of
+    {Format, Args} ->
+      [format_value(Value), $\s, io_lib:format(Format, Args)];
+    Data ->
+      [format_value(Value), $\s, Data]
+  end;
+value_error_string(Value, Reason, _) ->
+  io_lib:format(<<"~ts: ~0tp">>, [format_value(Value), Reason]).
 
 -spec default_type_map() -> type_map().
 default_type_map() ->
@@ -345,3 +356,13 @@ format_value_errors(Errors) ->
     _ ->
       error({invalid_character_data, Data})
   end.
+
+-spec format_value(term()) -> unicode:chardata().
+format_value(V) when is_boolean(V); is_number(V); is_binary(V) ->
+  ["value ", json:serialize(V)];
+format_value(V) when is_list(V) ->
+  <<"array">>;
+format_value(V) when is_map(V) ->
+  <<"object">>;
+format_value(_) ->
+  <<"value">>.

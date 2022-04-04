@@ -63,26 +63,26 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({min_length, 1}, _) ->
-  "value must not be empty";
+  "must not be empty";
 format_constraint_violation({min_length, Min}, _) ->
-  {"value must contain at least ~0tp characters", [Min]};
+  {"must contain at least ~0tp characters", [Min]};
 
 format_constraint_violation({max_length, Max}, _) ->
-  {"value must contain at most ~0tp characters", [Max]};
+  {"must contain at most ~0tp characters", [Max]};
 
 format_constraint_violation({prefix, Prefix}, _) ->
-  {"value must start with \"~ts\"", [Prefix]};
+  {"must start with \"~ts\"", [Prefix]};
 
 format_constraint_violation({suffix, Suffix}, _) ->
-  {"value must end with \"~ts\"", [Suffix]};
+  {"must end with \"~ts\"", [Suffix]};
 
 format_constraint_violation({values, [Value]}, _) ->
   String = json:serialize(atom_to_binary(Value)),
-  {"value must be the string \"~ts\"", [String]};
+  {"must be the string \"~ts\"", [String]};
 format_constraint_violation({values, Values}, _) ->
   Strings = [[$", atom_to_binary(Value), $"] || Value <- Values],
   Data = lists:join(<<", ">>, Strings),
-  {"value must be one of the following strings: ~ts", [Data]}.
+  {"must be one of the following strings: ~ts", [Data]}.
 
 validate_type(Value, _) when is_binary(Value) ->
   {ok, Value, Value};

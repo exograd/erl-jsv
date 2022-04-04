@@ -47,10 +47,10 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({min, Min}, _) ->
-  {"value must be greater or equal to ~s", [format_date(Min)]};
+  {"must be greater or equal to ~s", [format_date(Min)]};
 
 format_constraint_violation({max, Max}, _) ->
-  {"value must be lower or equal to ~s", [format_date(Max)]}.
+  {"must be lower or equal to ~s", [format_date(Max)]}.
 
 validate_type(Value, _) when is_binary(Value) ->
   case parse_date(Value) of

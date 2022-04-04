@@ -44,17 +44,17 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({min_length, 1}, _) ->
-  "value must contain at least 1 element";
+  "must contain at least 1 element";
 format_constraint_violation({min_length, Min}, _) ->
-  {"value must contain at least ~0tp elements", [Min]};
+  {"must contain at least ~0tp elements", [Min]};
 
 format_constraint_violation({max_length, Max}, _) ->
-  {"value must contain at most ~0tp elements", [Max]};
+  {"must contain at most ~0tp elements", [Max]};
 
 format_constraint_violation({unique_elements, true}, _) ->
-  {"value must not contain duplicate elements", []};
+  {"must not contain duplicate elements", []};
 format_constraint_violation({unique_elements, false}, _) ->
-  {"value must contain at least one duplicate element", []}.
+  {"must contain at least one duplicate element", []}.
 
 validate_type(Value, _) when is_list(Value) ->
   {ok, Value, []};

@@ -78,21 +78,21 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({min_size, 1}, _) ->
-  "value must contain at least 1 member";
+  "must contain at least 1 member";
 format_constraint_violation({min_size, Min}, _) ->
-  {"value must contain at least ~0tp members", [Min]};
+  {"must contain at least ~0tp members", [Min]};
 
 format_constraint_violation({max_size, Max}, _) ->
-  {"value must contain at most ~0tp members", [Max]};
+  {"must contain at most ~0tp members", [Max]};
 
 format_constraint_violation({required, _}, {missing_names, [Name]}) ->
-  {"value must contain the following member: ~ts", [Name]};
+  {"must contain the following member: ~ts", [Name]};
 format_constraint_violation({required, _}, {missing_names, Names}) ->
   Data = lists:join(<<", ">>, lists:map(fun atom_to_binary/1, Names)),
-  {"value must contain the following members: ~ts", [iolist_to_binary(Data)]};
+  {"must contain the following members: ~ts", [iolist_to_binary(Data)]};
 format_constraint_violation({members, _}, {invalid_names, Names}) ->
   Data = lists:join(<<", ">>, Names),
-  {"value must not contain the following members: ~ts",
+  {"must not contain the following members: ~ts",
    [iolist_to_binary(Data)]}.
 
 validate_type(Value, State) when is_map(Value) ->

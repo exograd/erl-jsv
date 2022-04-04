@@ -43,10 +43,10 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({min, Min}, _) ->
-  {"value must be greater or equal to ~s", [format_datetime(Min)]};
+  {"must be greater or equal to ~s", [format_datetime(Min)]};
 
 format_constraint_violation({max, Max}, _) ->
-  {"value must be lower or equal to ~s", [format_datetime(Max)]}.
+  {"must be lower or equal to ~s", [format_datetime(Max)]}.
 
 validate_type(Value, _) when is_binary(Value) ->
   try

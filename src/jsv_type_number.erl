@@ -36,10 +36,10 @@ verify_constraint(_, _) ->
   unknown.
 
 format_constraint_violation({min, Min}, _) ->
-  {"value must be greater or equal to ~0tp", [Min]};
+  {"must be greater or equal to ~0tp", [Min]};
 
 format_constraint_violation({max, Max}, _) ->
-  {"value must be lower or equal to ~0tp", [Max]}.
+  {"must be lower or equal to ~0tp", [Max]}.
 
 validate_type(Value, _) when is_number(Value) ->
   ok;

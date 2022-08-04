@@ -205,22 +205,23 @@ verify_catalog(CatalogName, Options0) ->
       ets:safe_fixtable(Table, true),
       try
         State = jsv_verifier:init(Options),
-        verify_catalog_definition(Table, ets:first(Table), State)
+        verify_catalog_definition(CatalogName, Table, ets:first(Table), State)
       after
         ets:safe_fixtable(Table, false)
       end
   end.
 
--spec verify_catalog_definition(ets:tid(), Key :: term(),
+-spec verify_catalog_definition(catalog_name(), ets:tid(), Key :: term(),
                                 jsv_verifier:state()) ->
         ok | {error, [definition_error_reason()]}.
-verify_catalog_definition(_Table, '$end_of_table', _State) ->
+verify_catalog_definition(_CatalogName, _Table, '$end_of_table', _State) ->
   ok;
-verify_catalog_definition(Table, Name, State) ->
+verify_catalog_definition(CatalogName, Table, Name, State) ->
   Definition = ets:lookup_element(Table, Name, 2),
   case jsv_verifier:verify(Definition, State) of
     {ok, State2} ->
-      verify_catalog_definition(Table, ets:next(Table, Name), State2);
+      verify_catalog_definition(CatalogName, Table, ets:next(Table, Name),
+                                State2#{catalog => CatalogName});
     {error, Errors} ->
       {error, {invalid_definition, Errors, Name}}
   end.
